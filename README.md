@@ -1,3 +1,3 @@
 # Blockchain101
 
-we can write blockchain block with this tutorial sample.
+Practise that blockchain block with this tutorial sample.
