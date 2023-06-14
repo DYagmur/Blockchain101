@@ -1,96 +1,67 @@
-#This tutorial document is for improving Blockchain technology.
-
-
-#Steps
-# Each block is a row of data
-# 1 Create Blockchain class
-# 2 Fumction to build new blocks
-# 3 Fumction to create new transactions and get last block
-# 4. Write a function to hash the blocks
-#
-
 import hashlib
-import json
-from time import time
+import datetime
 
-class Blockchain(object):
+class Block:
+    def __init__(self, index, timestamp, data, previous_hash):
+        self.index = index
+        self.timestamp = timestamp
+        self.data = data
+        self.previous_hash = previous_hash
+        self.nonce = 0
+        self.hash = self.calculate_hash()
+
+    def calculate_hash(self):
+        data = str(self.index) + str(self.timestamp) + str(self.data) + str(self.previous_hash) + str(self.nonce)
+        return hashlib.sha256(data.encode()).hexdigest()
+
+    def mine_block(self, difficulty):
+        while self.hash[:difficulty] != '0' * difficulty:
+            self.nonce += 1
+            self.hash = self.calculate_hash()
+
+class Blockchain:
     def __init__(self):
-        self.chain = []
-        self.pending_transactions = []
+        self.chain = [self.create_genesis_block()]
+        self.difficulty = 2
 
-        self.new_block(previous_hash="I am moving the world.", proof=100)
+    def create_genesis_block(self):
+        return Block(0, datetime.datetime.now(), "Genesis Block", "0")
 
-    # block-builder
-    def new_block(self, proof, previous_hash=None):
-        # define the object properties
-        block = {
-            'index' : len(self.chain) + 1,
-            'timestamp' : time(),
-            'transactions': self.pending_transactions,
-            'proof': proof,
-            'previous_hash': previous_hash or self.hash(self.chain[-1]),
-        }
-        self.pending_transactions = []
-        self.chain.append(block)
-
-        return block
-
-    @property
-    def last_block(self):
-
+    def get_latest_block(self):
         return self.chain[-1]
 
-    def new_transaction(self, sender, recipient, amount):
-        # Super-simplified object properties
-        transaction = {
-            'sender': sender,
-            'recipient': recipient,
-            'amount': amount
-        }
+    def add_block(self, new_block):
+        new_block.previous_hash = self.get_latest_block().hash
+        new_block.mine_block(self.difficulty)
+        self.chain.append(new_block)
 
-        # JSON object apparrently, like a form waiting for data
-        # "Data stays in limbo until a new block is mined
-        # and added to our blockchain."
-        self.pending_transactions.append(transaction)
-        # ID ready for the new transaction
-        return self.last_block['index'] + 1
+    def is_chain_valid(self):
+        for i in range(1, len(self.chain)):
+            current_block = self.chain[i]
+            previous_block = self.chain[i - 1]
 
-    def hash(self, block):
-        # (in JSON, out text string)
-        string_object = json.dumps(block, sort_keys=True)
-        print(f"string_object = {string_object}")
-        # "turns string into Unicode"
-        block_string = string_object.encode()
-        print(f"block_string = {block_string}")
+            if current_block.hash != current_block.calculate_hash():
+                return False
 
-        # Block text Unicode string encrypted with
-        # SHA-256 hash function from hashlib
-        # (in text -> out 64-char-long encrypted string)
-        raw_hash = hashlib.sha256(block_string)
-        print(f"raw_hash = {raw_hash}")
-        # create hexidecimal string from raw_hash"
-        hex_hash = raw_hash.hexdigest()
-        print(f"hex_hash = {hex_hash}")
+            if current_block.previous_hash != previous_block.hash:
+                return False
 
-        return hex_hash
-		
-"""
-Blockchains are considered 'tamper-proof' 
-because blocks contain a copy of the previous block's hash.
-[like DNA?]
-Since your new hash is derived from the previous block, 
-you can't change any part of it 
-without changing every single hash in front of it.
-"""
-# execution
+        return True
+
+
+# Usage example
 blockchain = Blockchain()
-b1 = blockchain.new_transaction("Tom", "Jerry", "1 BTC")
-b2 = blockchain.new_transaction("Brutus", "Jerry", "3 BTC")
-b3 = blockchain.new_transaction("Jerry", "Brutus", "0.5 BTC")
-b4 = blockchain.new_transaction("Tom", "Brutus", "2.5 BTC")
-blockchain.new_block(12345)
 
-b5 = blockchain.new_transaction("Brutus", "Tom", "0.5 BTC")
-b6 = blockchain.new_transaction("Jerry", "Brutus", "2 BTC")
-b7 = blockchain.new_transaction("Tom", "Jerry", "1.5 BTC")
-blockchain.new_block(67890)
+# Adding blocks to the blockchain
+blockchain.add_block(Block(1, datetime.datetime.now(), {"amount": 4}, ""))
+blockchain.add_block(Block(2, datetime.datetime.now(), {"amount": 10}, ""))
+blockchain.add_block(Block(3, datetime.datetime.now(), {"amount": 8}, ""))
+
+# Checking if the blockchain is valid
+print("Is blockchain valid? ", blockchain.is_chain_valid())
+
+# Modifying data in a block (tampering)
+blockchain.chain[1].data = {"amount": 100}
+
+# Rechecking validity after tampering
+print("Is blockchain valid after tampering? ", blockchain.is_chain_valid())
